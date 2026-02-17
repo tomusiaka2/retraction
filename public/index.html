@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>G-code Retraction Optimizer</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --accent: #06b6d4;
+      --muted: #9ca3af;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      background: radial-gradient(circle at 20% 20%, #0b2f4b, var(--bg)),
+                  radial-gradient(circle at 80% 0%, #0f172a, #0b1a2c 50%, var(--bg));
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+    main {
+      width: min(640px, 100%);
+      background: var(--panel);
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      letter-spacing: 0.01em;
+    }
+    p.description { color: var(--muted); margin-top: 0; margin-bottom: 20px; }
+    form { display: grid; gap: 14px; }
+    label { display: grid; gap: 6px; font-weight: 600; color: var(--text); }
+    input[type="file"], input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      color: var(--text);
+    }
+    input[type="number"] {
+      appearance: textfield;
+    }
+    button {
+      margin-top: 4px;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(120deg, #0ea5e9, #06b6d4);
+      color: #0b1120;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(6,182,212,0.25); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .button-row { display: grid; gap: 8px; }
+    .secondary {
+      background: #1f2937;
+      color: var(--text);
+      border: 1px solid #1f2937;
+      box-shadow: none;
+    }
+    #status { color: var(--muted); min-height: 20px; }
+    .small { font-size: 13px; color: var(--muted); }
+    .checkbox-row { display: flex; gap: 12px; align-items: center; }
+    .checkbox-row input[type="checkbox"] { width: auto; height: auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>G-code Retraction Optimizer</h1>
+    <p class="description">Upload a .gcode file, set min/max retraction lengths, and download the adjusted file.</p>
+    <form id="uploadForm" action="/api/adjust" method="post" enctype="multipart/form-data">
+      <label>
+        G-code file
+        <input type="file" name="file" accept=".gcode,text/plain" required />
+      </label>
+      <label>
+        Minimum retraction (mm)
+        <input type="number" name="min" value="2" min="0" step="0.1" required />
+      </label>
+      <label>
+        Maximum retraction (mm)
+        <input type="number" name="max" value="8" min="0" step="0.1" required />
+      </label>
+      <label class="checkbox-row">
+        <div>
+          <div>Retract during travel</div>
+          <div class="small">Keeps travel feed untouched, works with wipes: minimum retract stays stationary, wipes are kept/scaled, and any remaining retract is applied on the first XY travel move.</div>
+        </div>
+        <input type="checkbox" name="inlineDuringTravel" checked/>
+      </label>
+      <div class="button-row">
+        <button type="submit" data-mode="fetch">Process file</button>
+        <button type="submit" class="secondary" data-mode="direct" formtarget="_blank">Direct download (no fetch)</button>
+      </div>
+      <div class="small">Travel &le; 10 mm → min; Travel &ge; 100 mm → max; interpolated in between.</div>
+      <div id="status"></div>
+      <div id="timing" class="small"></div>
+    </form>
+  </main>
+  <script>
+    const form = document.getElementById('uploadForm');
+    const statusEl = document.getElementById('status');
+    const timingEl = document.getElementById('timing');
+    const button = form.querySelector('button');
+
+    function setStatus(text, isError = false) {
+      statusEl.textContent = text;
+      statusEl.style.color = isError ? '#f87171' : '#9ca3af';
+    }
+
+    function setTiming(rawOriginal, rawAdjusted, rawSaved, slicer, calibratedAdjusted) {
+      const fmt = (s) => {
+        if (!Number.isFinite(s)) return null;
+        if (s >= 3600) return `${(s / 3600).toFixed(2)} h`;
+        if (s >= 60) return `${(s / 60).toFixed(1)} min`;
+        return `${s.toFixed(1)} s`;
+      };
+
+      const parts = [];
+      const rawO = fmt(rawOriginal);
+      const rawA = fmt(rawAdjusted);
+      if (rawO && rawA) {
+        const rawS = rawSaved && rawSaved > 0 ? fmt(rawSaved) : '0 s';
+        parts.push(`Raw: ${rawO} → ${rawA} (saved ${rawS})`);
+      }
+
+      const slicerFmt = fmt(slicer);
+      const calFmt = fmt(calibratedAdjusted);
+      if (slicerFmt && calFmt) {
+        const savedCal = slicer - calibratedAdjusted;
+        const savedCalFmt = savedCal > 0 ? fmt(savedCal) : '0 s';
+        parts.push(`Calibrated: ${slicerFmt} → ${calFmt} (saved ${savedCalFmt})`);
+      }
+
+      timingEl.textContent = parts.join(' | ');
+    }
+
+    form.addEventListener('submit', async (event) => {
+      const submitter = event.submitter;
+      const mode = submitter?.dataset?.mode;
+      if (mode === 'direct') {
+        // Allow native form submit (opens in new tab via formtarget)
+        setStatus('Downloading via direct submit...');
+        return;
+      }
+
+      event.preventDefault();
+      setStatus('Uploading and processing...');
+      setTiming(null, null, null);
+      button.disabled = true;
+
+      const formData = new FormData(form);
+      try {
+        const response = await fetch('/api/adjust', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          // Try to parse JSON error if present
+          try {
+            const parsed = JSON.parse(errorText);
+            throw new Error(parsed.error || 'Processing failed');
+          } catch (_) {
+            throw new Error(errorText || 'Processing failed');
+          }
+        }
+
+        const disposition = response.headers.get('content-disposition') || '';
+        const nameMatch = disposition.match(/filename="?([^";]+)"?/i);
+        const filename = nameMatch ? nameMatch[1] : 'adjusted.gcode';
+
+        const originalSec = Number(response.headers.get('x-original-time-sec'));
+        const adjustedSec = Number(response.headers.get('x-adjusted-time-sec'));
+        const savedSec = Number(response.headers.get('x-time-saved-sec'));
+        const slicerSec = Number(response.headers.get('x-slicer-time-sec'));
+        const adjustedCalSec = Number(response.headers.get('x-adjusted-time-calibrated-sec'));
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setStatus('Done. Download should begin.');
+        const savedCal = slicerSec && adjustedCalSec ? slicerSec - adjustedCalSec : null;
+        setTiming(originalSec, adjustedSec, savedSec, slicerSec, adjustedCalSec ?? null);
+      } catch (err) {
+        setStatus(err.message || 'Error processing file', true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

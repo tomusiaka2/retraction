@@ -1,0 +1,23 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "/Users/tomusiaka/.nvm/versions/node/v16.13.0/bin/node",
+			"args": [
+				"./node_modules/typescript/lib/tsc",
+				"--project",
+				"tsconfig.json"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			}
+		}
+	]
+}

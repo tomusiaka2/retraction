@@ -1,0 +1,28 @@
+{
+  "name": "retraction-adjuster",
+  "version": "0.1.0",
+  "description": "CLI to adjust G-code retraction and deretraction distances based on travel length",
+  "license": "MIT",
+  "bin": {
+    "retraction-adjust": "dist/src/index.js"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "dev": "ts-node src/index.ts",
+    "dev:server": "ts-node src/server.ts",
+    "start": "node dist/src/index.js",
+    "start:server": "npm run build && node scripts/free-port.js && node dist/src/server.js",
+    "test": "ts-node test/adjuster.test.ts"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.12",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}
