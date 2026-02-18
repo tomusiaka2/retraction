@@ -26,9 +26,9 @@ app.post('/api/adjust', upload.single('file'), (req, res) => {
   }
 
   const minValue = Number(req.body.min ?? 2);
-  const maxValue = Number(req.body.max ?? 6);
+  const maxValue = Number(req.body.max ?? 8);
   const minRetract = Number.isFinite(minValue) ? minValue : 2;
-  const maxRetract = Number.isFinite(maxValue) ? maxValue : 6;
+  const maxRetract = Number.isFinite(maxValue) ? maxValue : 8;
   const inlineDuringTravel = ['true', 'on', '1'].includes(String(req.body.inlineDuringTravel).toLowerCase());
 
   const startedAt = Date.now();

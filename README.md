@@ -9,7 +9,7 @@ CLI/server/UI written in TypeScript that optimizes a G-code file to reduce unnec
 - Travel between 10 mm and 100 mm → linear interpolation between min and max.
 - Minimum and maximum retraction values can be overridden via flags or UI fields.
 - Shortened retraction will also shorten wipe moves.
-- Optional: "Retract during travel" keeps travel feed untouched, works with wipes (min retract stays stationary, wipes keep their movement up to the target, remaining retract is applied on the first XY travel move). Default inline mode splits the first travel move so the retract-bearing portion uses retract feed and the remainder uses travel feed.
+- Optional: "Retract during travel" keeps travel feed untouched, works with wipes (min retract stays stationary, wipes keep their movement up to the target, remaining retract is applied on the first XY travel move).
 
 Notes:
 - Designed for G-code that uses relative extrusion for retractions (common `G1 E-5` / `G1 E5` pairs).

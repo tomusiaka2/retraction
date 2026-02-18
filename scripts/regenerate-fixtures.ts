@@ -33,7 +33,6 @@ gen(inputMain, {
   minTravel: 10,
   maxTravel: 100,
   inlineDuringTravel: true,
-  splitInlineTravel: true,
   decimalPlaces: 5,
   inputName: path.basename(inputMain),
 }, 'retraction-test.inline.split.expected.gcode');

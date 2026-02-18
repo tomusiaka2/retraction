@@ -82,7 +82,7 @@ function main(): void {
   const lines = gcodeText.split(/\r?\n/);
 
   const minRetract = args.min ?? 2;
-  const maxRetract = args.max ?? 6;
+  const maxRetract = args.max ?? 8;
 
   const build = buildAdjustedOutput(lines, {
     minRetract,

@@ -5,7 +5,6 @@ export interface AdjustOptions {
   maxTravel: number;
   decimalPlaces?: number;
   inlineDuringTravel?: boolean;
-  splitInlineTravel?: boolean;
 }
 
 interface Move {
@@ -44,7 +43,6 @@ const DEFAULT_OPTIONS: AdjustOptions = {
   minTravel: 10,
   maxTravel: 100,
   decimalPlaces: 5,
-  splitInlineTravel: true,
 };
 
 export function computeRetraction(travel: number, options: AdjustOptions = DEFAULT_OPTIONS): number {
@@ -131,11 +129,11 @@ function distance(a: Position, b: Position): number {
 export function adjustGcodeLines(lines: string[], options: AdjustOptions = DEFAULT_OPTIONS): string[] {
   const decimalPlaces = options.decimalPlaces !== undefined ? options.decimalPlaces : DEFAULT_OPTIONS.decimalPlaces;
   const inlineDuringTravel = options.inlineDuringTravel ?? false;
-  const splitInlineTravel = options.splitInlineTravel ?? DEFAULT_OPTIONS.splitInlineTravel;
   let currentPos: Position = { x: 0, y: 0 };
   let state: RetractionState | null = null;
   let travel = 0;
   const removals = new Set<number>();
+  // insertions map retained for future insertions, currently unused
   const insertions = new Map<number, string[]>();
   const epsilon = 1e-6;
   let inWipe = false;
@@ -230,52 +228,8 @@ export function adjustGcodeLines(lines: string[], options: AdjustOptions = DEFAU
             let remainingInline = Math.max(remainingBudget, 0);
             const travelIndex = state.travelIndices[0];
             if (travelIndex !== undefined && remainingInline > epsilon) {
-              if (splitInlineTravel) {
-                const travelMove = state.travelMoves[0];
-                const travelLine = travelMove?.raw ?? updated[travelIndex];
-                const travelStart = travelMove?.start ?? currentPos;
-                const travelEnd = travelMove?.end ?? currentPos;
-                const travelDist = distance(travelStart, travelEnd);
-
-                if (travelMove && travelDist > epsilon) {
-                  const command = (travelLine.trim().match(/^G0?1/i) ?? ['G1'])[0];
-                  const ratio = 0.5; // split halfway for the retract-bearing portion
-                  const mid: Position = {
-                    x: travelStart.x + (travelEnd.x - travelStart.x) * ratio,
-                    y: travelStart.y + (travelEnd.y - travelStart.y) * ratio,
-                  };
-                  const retractFeed = state.retractFeed ?? travelMove.f;
-                  const travelFeed = travelMove.f;
-
-                  const coordPartsLead = [
-                    `${command} X${formatCoord(mid.x, decimalPlaces)} Y${formatCoord(mid.y, decimalPlaces)}`,
-                  ];
-                  if (travelMove.z !== undefined) coordPartsLead.push(`Z${formatCoord(travelMove.z, decimalPlaces)}`);
-                  if (retractFeed !== undefined) coordPartsLead.push(`F${retractFeed}`);
-                  coordPartsLead.push(formatE(-remainingInline, decimalPlaces));
-                  const leadLine = coordPartsLead.join(' ');
-
-                  const coordPartsTail = [
-                    `${command} X${formatCoord(travelEnd.x, decimalPlaces)} Y${formatCoord(travelEnd.y, decimalPlaces)}`,
-                  ];
-                  if (travelMove.z !== undefined) coordPartsTail.push(`Z${formatCoord(travelMove.z, decimalPlaces)}`);
-                  if (travelFeed !== undefined) coordPartsTail.push(`F${travelFeed}`);
-                  const commentIndex = travelLine.indexOf(';');
-                  const comment = commentIndex >= 0 ? travelLine.slice(commentIndex) : '';
-                  const tailLineBase = coordPartsTail.join(' ');
-                  const tailLine = comment ? `${tailLineBase} ${comment}` : tailLineBase;
-
-                  updated[travelIndex] = leadLine;
-                  insertions.set(travelIndex, [tailLine]);
-                  remainingInline = 0;
-                } else {
-                  updated[travelIndex] = upsertEValue(updated[travelIndex], -remainingInline, decimalPlaces);
-                  remainingInline = 0;
-                }
-              } else {
-                updated[travelIndex] = upsertEValue(updated[travelIndex], -remainingInline, decimalPlaces);
-                remainingInline = 0;
-              }
+              updated[travelIndex] = upsertEValue(updated[travelIndex], -remainingInline, decimalPlaces);
+              remainingInline = 0;
             }
 
             if (remainingInline > epsilon && lead) {
@@ -389,8 +343,6 @@ export function adjustGcodeLines(lines: string[], options: AdjustOptions = DEFAU
     if (line === undefined || line === null) return;
     if (removals.has(idx)) return;
     result.push(line);
-    const toInsert = insertions.get(idx);
-    if (toInsert && toInsert.length > 0) result.push(...toInsert);
   });
 
   return result;

@@ -75,7 +75,6 @@ function readLines(file: string): string[] {
       maxTravel: 100,
       decimalPlaces: 5,
       inlineDuringTravel: true,
-      splitInlineTravel: false,
     });
 
     assert.deepStrictEqual(inlineAdjusted, [
@@ -99,7 +98,6 @@ function readLines(file: string): string[] {
       maxTravel: 100,
       decimalPlaces: 5,
       inlineDuringTravel: true,
-      splitInlineTravel: false,
     });
 
     assert.deepStrictEqual(inlineWithZ, [
@@ -110,30 +108,6 @@ function readLines(file: string): string[] {
       'G1 E3.33333 F900',
     ]);
     console.log('PASS inline retract skips Z travel and applies to next XY move');
-
-    const splitInline = adjustGcodeLines([
-      'G1 X0 Y0 F6000',
-      'G1 E-5.00000 F900',
-      'G1 X30 Y0 F7200',
-      'G1 E5.00000 F900',
-    ], {
-      minRetract: 2,
-      maxRetract: 5,
-      minTravel: 10,
-      maxTravel: 100,
-      decimalPlaces: 5,
-      inlineDuringTravel: true,
-      splitInlineTravel: true,
-    });
-
-    assert.deepStrictEqual(splitInline, [
-      'G1 X0 Y0 F6000',
-      'G1 E-2.00000 F900',
-      'G1 X15.00000 Y0.00000 F900 E-0.66667',
-      'G1 X30.00000 Y0.00000 F7200',
-      'G1 E2.66667 F900',
-    ]);
-    console.log('PASS split inline retract uses retract feed then completes travel with no retract');
 
     const inlineWithWipe = adjustGcodeLines([
       'G1 X0 Y0 F6000',
@@ -150,7 +124,6 @@ function readLines(file: string): string[] {
       maxTravel: 100,
       decimalPlaces: 5,
       inlineDuringTravel: true,
-      splitInlineTravel: false,
     });
 
     assert.deepStrictEqual(inlineWithWipe, [
@@ -176,7 +149,6 @@ function readLines(file: string): string[] {
       maxTravel: 100,
       decimalPlaces: 5,
       inlineDuringTravel: true,
-      splitInlineTravel: false,
     });
 
     assert.deepStrictEqual(inlineAtMin, [
@@ -193,7 +165,6 @@ function readLines(file: string): string[] {
       minTravel: 10,
       maxTravel: 100,
       inlineDuringTravel: true,
-      splitInlineTravel: false,
       inputName: path.basename(inputPath),
     }).outputLines;
 
@@ -218,7 +189,6 @@ function readLines(file: string): string[] {
       maxTravel: 100,
       decimalPlaces: 5,
       inlineDuringTravel: true,
-      splitInlineTravel: false,
       inputName: path.basename(noWipePath),
     });
 
