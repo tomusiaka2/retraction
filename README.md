@@ -37,7 +37,7 @@ Optional flags:
 ```bash
 npm run build
 npm run start:server
-# open http://localhost:3000
+# open http://localhost:3002
 ```
 
 ## General usage
@@ -50,7 +50,7 @@ npm run start:server
 ## Additional notes
 - Upload limit is 500 MB; oversized uploads return a JSON error.
 - If the slicer-provided estimate is present (PrusaSlicer/filename patterns), the server returns it and a calibrated adjusted time; both are also embedded as comments at the top of the adjusted G-code.
-- If port 3000 is in use, `npm run start:server` will try to free it automatically before starting.
+- If port 3002 is in use, `npm run start:server` will try to free it automatically before starting.
 - If no matching deretraction is found after a retraction, that retraction is left unchanged.
 - Absolute extrusion or unusual retraction patterns may not be fully supported; adjust logic in `src/adjuster.ts` as needed.
 
