@@ -226,10 +226,34 @@ export function adjustGcodeLines(lines: string[], options: AdjustOptions = DEFAU
             }
 
             let remainingInline = Math.max(remainingBudget, 0);
-            const travelIndex = state.travelIndices[0];
-            if (travelIndex !== undefined && remainingInline > epsilon) {
-              updated[travelIndex] = upsertEValue(updated[travelIndex], -remainingInline, decimalPlaces);
-              remainingInline = 0;
+            const travelMoves = state.travelMoves;
+
+            if (travelMoves.length > 0 && remainingInline > epsilon) {
+              const totalTravel = travelMoves.reduce((sum, move) => sum + distance(move.start, move.end), 0);
+
+              if (totalTravel > epsilon) {
+                let usedInline = 0;
+                travelMoves.forEach((move, idx) => {
+                  const isLast = idx === travelMoves.length - 1;
+                  const segmentDistance = distance(move.start, move.end);
+                  const target = isLast
+                    ? Math.max(remainingInline - usedInline, 0)
+                    : (remainingInline * segmentDistance) / totalTravel;
+
+                  if (target > epsilon) {
+                    updated[move.index] = upsertEValue(updated[move.index], -target, decimalPlaces);
+                    usedInline += target;
+                  }
+                });
+
+                remainingInline = Math.max(remainingInline - usedInline, 0);
+              } else {
+                const travelIndex = state.travelIndices[0];
+                if (travelIndex !== undefined) {
+                  updated[travelIndex] = upsertEValue(updated[travelIndex], -remainingInline, decimalPlaces);
+                  remainingInline = 0;
+                }
+              }
             }
 
             if (remainingInline > epsilon && lead) {

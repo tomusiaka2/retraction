@@ -158,6 +158,44 @@ function readLines(file: string): string[] {
       'G1 E3.00000 F1500',
     ]);
     console.log('PASS inline retract stays stationary when target equals min');
+    const inlineMultiTravel = adjustGcodeLines([
+      'G1 X0 Y0 F6000',
+      'G1 E-5.00000 F1800',
+      'G1 X60 Y0 F7200',
+      'G1 X90 Y0 F7200',
+      'G1 E5.00000 F1800',
+    ], {
+      minRetract: 2,
+      maxRetract: 5,
+      minTravel: 10,
+      maxTravel: 100,
+      decimalPlaces: 5,
+      inlineDuringTravel: true,
+    });
+
+    assert.deepStrictEqual(inlineMultiTravel, [
+      'G1 X0 Y0 F6000',
+      'G1 E-2.00000 F1800',
+      'G1 X60 Y0 F7200 E-1.77778',
+      'G1 X90 Y0 F7200 E-0.88889',
+      'G1 E4.66667 F1800',
+    ]);
+    console.log('PASS inline retract distributes across multiple travel moves');
+
+      const inlineMultiSegInput = readLines(path.join(__dirname, 'retraction-inline-multi-seg.gcode'));
+      const inlineMultiSegExpected = readLines(path.join(fixtureDir, 'retraction-inline-multi-seg.expected.gcode'));
+      const inlineMultiSegBuild = buildAdjustedOutput(inlineMultiSegInput, {
+        minRetract: 2,
+        maxRetract: 5,
+        minTravel: 10,
+        maxTravel: 100,
+        decimalPlaces: 5,
+        inlineDuringTravel: true,
+        inputName: 'retraction-inline-multi-seg.gcode',
+      });
+
+      assert.deepStrictEqual(inlineMultiSegBuild.outputLines, inlineMultiSegExpected);
+      console.log('PASS inline multi-segment fixture distributes inline retract across travel path');
 
     const inlineFixture = buildAdjustedOutput(inputLines, {
       minRetract: 2,
