@@ -9,7 +9,7 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 },
 });
 
-const port = Number(process.env.PORT) || 3002;
+const port = Number(process.env.PORT) || 3004;
 // When compiled, __dirname points to dist/src, so walk up two levels to reach the project root public folder.
 const publicDir = path.resolve(__dirname, '..', '..', 'public');
 

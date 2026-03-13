@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const { execSync } = require('child_process');
 
-const port = process.env.PORT || 3002;
+const port = process.env.PORT || 3004;
 
 function killPort(p) {
   try {

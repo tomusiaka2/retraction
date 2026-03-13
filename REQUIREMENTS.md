@@ -25,7 +25,7 @@
 ## Behavior guarantees
 - Preserve original travel feed values; preserve retract feed values when present.
 - Time estimate headers/comments: return slicer estimate when present and a calibrated adjusted estimate; include in response headers and injected comments.
-- If port 3002 is occupied, server attempts to free it before starting.
+- If port 3004 is occupied, server attempts to free it before starting.
 
 ## Non-goals / caveats
 - Absolute extrusion patterns are not fully supported.
